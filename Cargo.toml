@@ -1,7 +1,12 @@
 [package]
 name = "bevy-async-runner"
+description = "Bevy Async Runner simplifies working with asynchronous code in the Bevy game engine. It provides a mechanism to schedule and execute async tasks and provide their result to any system."
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/DarkZek/bevy-async-runner"
+categories = ["asynchronous", "wasm"]
+keywords = ["bevy", "async"]
 
 [dependencies]
 bevy = { version = "0.16", default-features = false, features = ["bevy_log"] }
