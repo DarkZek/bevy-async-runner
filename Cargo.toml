@@ -20,3 +20,11 @@ tokio = { version = "1.44.2", features = ["sync"] }
 [features]
 tokio-runtime = ["tokio/rt"]
 tokio-runtime-multi-thread = ["tokio/rt", "tokio/rt-multi-thread"]
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["json"]}
+tokio = { version = "1.44.2", features = ["time"] }
+serde = { version = "1.0.219", features = ["derive"] }
+
+[[example]]
+name = "reqwest"
