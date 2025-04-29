@@ -37,7 +37,6 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy = "0.11"
 bevy-async-executor = "0.1"
 ```
 
