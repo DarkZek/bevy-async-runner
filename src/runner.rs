@@ -1,18 +1,24 @@
 use std::future::Future;
-use std::sync::{Arc, Mutex};
-use bevy::prelude::{Commands, IntoSystem, Resource, SystemInput};
+use bevy::prelude::{warn, Commands, IntoSystem, Resource, SystemInput};
 use bevy::tasks::IoTaskPool;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender, UnboundedReceiver};
+use tokio::sync::mpsc::error::TryRecvError;
+
+type ExecuteSystemFn = Box<dyn FnOnce(&mut Commands) + Send + Sync>;
 
 #[derive(Resource)]
 pub struct AsyncRunner {
-    scheduled_runs: Arc<Mutex<Vec<Box<dyn FnOnce(&mut Commands) + Send + Sync>>>>,
+    channel: (
+        UnboundedSender<ExecuteSystemFn>,
+        UnboundedReceiver<ExecuteSystemFn>
+    ),
     pool: &'static IoTaskPool
 }
 
 impl AsyncRunner {
     pub fn new() -> AsyncRunner {
         AsyncRunner {
-            scheduled_runs: Arc::new(Mutex::new(Vec::new())),
+            channel: unbounded_channel(),
             pool: IoTaskPool::get()
         }
     }
@@ -27,7 +33,7 @@ impl AsyncRunner {
         system: S,
         task: impl Future<Output = I::Inner<'static>> + Sync + Send + 'static
     ) {
-        self.pool.spawn((async |runs: Arc<Mutex<Vec<Box<dyn FnOnce(&mut Commands) + Send + Sync>>>>| {
+        self.pool.spawn((async |sender: UnboundedSender<ExecuteSystemFn>| {
             let result = task.await;
 
             let boxed_result = Box::new(result);
@@ -39,17 +45,30 @@ impl AsyncRunner {
                 );
             };
 
-            runs.lock().unwrap().push(
-                Box::new(execute)
-            );
-        })(self.scheduled_runs.clone()))
+            sender.send(Box::new(execute)).unwrap();
+        })(self.channel.0.clone()))
             .detach();
     }
 
     /// Loop over all completed join handles and run the systems
-    pub fn run(&self, mut commands: Commands) {
-        for execute in self.scheduled_runs.lock().unwrap().drain(..) {
-            execute(&mut commands);
+    pub fn run(&mut self, mut commands: Commands) {
+        loop {
+            match self.channel.1.try_recv() {
+                Ok(execute) => {
+                    execute(&mut commands);
+                }
+                Err(e) => {
+                    match e {
+                        TryRecvError::Empty => {}
+                        TryRecvError::Disconnected => {
+                            warn!("AsyncRunner communication channel terminated");
+                            break;
+                        }
+                    }
+
+                    break;
+                }
+            }
         }
     }
 }

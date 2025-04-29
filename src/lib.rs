@@ -1,5 +1,5 @@
 use bevy::app::App;
-use bevy::prelude::{Commands, Plugin, Res, Update};
+use bevy::prelude::{Commands, Plugin, ResMut, Update};
 use crate::runner::AsyncRunner;
 
 pub mod runner;
@@ -13,6 +13,6 @@ impl Plugin for AsyncRunnerPlugin {
     }
 }
 
-fn complete_futures(scheduler: Res<AsyncRunner>, commands: Commands) {
+fn complete_futures(mut scheduler: ResMut<AsyncRunner>, commands: Commands) {
     scheduler.run(commands);
 }

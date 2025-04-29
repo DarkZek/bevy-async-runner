@@ -10,8 +10,8 @@ pub fn main() {
         .run();
 }
 
-fn welcome_user(scheduler: Res<AsyncRunner>) {
-    scheduler.schedule(print_name, load_name());
+fn welcome_user(runner: Res<AsyncRunner>) {
+    runner.schedule(print_name, load_name());
 }
 
 async fn load_name() -> String {
