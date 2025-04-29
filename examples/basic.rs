@@ -1,6 +1,5 @@
 use bevy::prelude::*;
-use bevy_async_runner::AsyncRunnerPlugin;
-use bevy_async_runner::runner::AsyncRunner;
+use bevy_async_runner::{AsyncRunner, AsyncRunnerPlugin};
 
 pub fn main() {
     App::new()
@@ -11,7 +10,7 @@ pub fn main() {
 }
 
 fn welcome_user(runner: Res<AsyncRunner>) {
-    runner.schedule(print_name, load_name());
+    runner.schedule(load_name(), print_name);
 }
 
 async fn load_name() -> String {

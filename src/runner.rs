@@ -12,14 +12,24 @@ pub struct AsyncRunner {
         UnboundedSender<ExecuteSystemFn>,
         UnboundedReceiver<ExecuteSystemFn>
     ),
-    pool: &'static IoTaskPool
+    #[cfg(not(all(feature = "tokio-runtime", not(target_arch = "wasm32"))))]
+    pool: &'static IoTaskPool,
+    #[cfg(all(feature = "tokio-runtime", not(target_arch = "wasm32")))]
+    pool: tokio::runtime::Runtime,
 }
 
 impl AsyncRunner {
     pub fn new() -> AsyncRunner {
         AsyncRunner {
             channel: unbounded_channel(),
-            pool: IoTaskPool::get()
+
+            #[cfg(not(all(feature = "tokio-runtime", not(target_arch = "wasm32"))))]
+            pool: IoTaskPool::get(),
+            #[cfg(all(feature = "tokio-runtime", not(target_arch = "wasm32")))]
+            pool: tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
         }
     }
 
@@ -30,10 +40,10 @@ impl AsyncRunner {
         I: SystemInput<Inner<'static>: Send + Sync> + Send + Sync + 'static
     >(
         &self,
+        task: impl Future<Output = I::Inner<'static>> + Sync + Send + 'static,
         system: S,
-        task: impl Future<Output = I::Inner<'static>> + Sync + Send + 'static
     ) {
-        self.pool.spawn((async |sender: UnboundedSender<ExecuteSystemFn>| {
+        let task = self.pool.spawn((async |sender: UnboundedSender<ExecuteSystemFn>| {
             let result = task.await;
 
             let boxed_result = Box::new(result);
@@ -46,8 +56,11 @@ impl AsyncRunner {
             };
 
             sender.send(Box::new(execute)).unwrap();
-        })(self.channel.0.clone()))
-            .detach();
+        })(self.channel.0.clone()));
+
+        // IoTaskPool won't finish it unless we detach
+        #[cfg(not(all(feature = "tokio-runtime", not(target_arch = "wasm32"))))]
+        task.detach();
     }
 
     /// Loop over all completed join handles and run the systems

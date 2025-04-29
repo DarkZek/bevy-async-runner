@@ -1,8 +1,8 @@
 use bevy::app::App;
 use bevy::prelude::{Commands, Plugin, ResMut, Update};
-use crate::runner::AsyncRunner;
+pub use crate::runner::AsyncRunner;
 
-pub mod runner;
+mod runner;
 
 pub struct AsyncRunnerPlugin;
 
