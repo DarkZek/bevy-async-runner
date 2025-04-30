@@ -1,6 +1,7 @@
 use std::future::Future;
-use bevy::prelude::{warn, Commands, IntoSystem, Resource, SystemInput};
+use bevy::prelude::{warn, trace, Commands, IntoSystem, Resource, SystemInput};
 use bevy::tasks::IoTaskPool;
+use maybe_sync::{MaybeSend, MaybeSync};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender, UnboundedReceiver};
 use tokio::sync::mpsc::error::TryRecvError;
 
@@ -12,24 +13,40 @@ pub struct AsyncRunner {
         UnboundedSender<ExecuteSystemFn>,
         UnboundedReceiver<ExecuteSystemFn>
     ),
-    #[cfg(not(all(feature = "tokio-runtime", not(target_arch = "wasm32"))))]
+    #[cfg(all(not(feature = "tokio-runtime"), not(feature = "tokio-runtime-multi-thread")))]
     pool: &'static IoTaskPool,
-    #[cfg(all(feature = "tokio-runtime", not(target_arch = "wasm32")))]
+    #[cfg(any(feature = "tokio-runtime-multi-thread", feature = "tokio-runtime"))]
     pool: tokio::runtime::Runtime,
 }
 
 impl AsyncRunner {
     pub fn new() -> AsyncRunner {
-        AsyncRunner {
-            channel: unbounded_channel(),
 
-            #[cfg(not(all(feature = "tokio-runtime", not(target_arch = "wasm32"))))]
-            pool: IoTaskPool::get(),
-            #[cfg(all(feature = "tokio-runtime", not(target_arch = "wasm32")))]
-            pool: tokio::runtime::Builder::new_multi_thread()
+        #[cfg(all(not(feature = "tokio-runtime"), not(feature = "tokio-runtime-multi-thread")))]
+        let pool = {
+            trace!("Fetching IoTaskPool runtime via IoTaskPool::get()");
+            IoTaskPool::get()
+        };
+        #[cfg(feature = "tokio-runtime-multi-thread")]
+        let pool= {
+            trace!("Starting tokio runtime via Builder::new_multi_thread()");
+            tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
-                .unwrap(),
+                .unwrap()
+        };
+        #[cfg(all(not(feature = "tokio-runtime-multi-thread"), feature = "tokio-runtime"))]
+        let pool = {
+            trace!("Starting tokio runtime via Builder::new_current_thread()");
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+        };
+
+        AsyncRunner {
+            channel: unbounded_channel(),
+            pool
         }
     }
 
@@ -40,7 +57,7 @@ impl AsyncRunner {
         I: SystemInput<Inner<'static>: Send + Sync> + Send + Sync + 'static
     >(
         &self,
-        task: impl Future<Output = I::Inner<'static>> + Sync + Send + 'static,
+        task: impl Future<Output = I::Inner<'static>> + MaybeSend + MaybeSync + 'static,
         system: S,
     ) {
         let task = self.pool.spawn((async |sender: UnboundedSender<ExecuteSystemFn>| {
@@ -59,7 +76,7 @@ impl AsyncRunner {
         })(self.channel.0.clone()));
 
         // IoTaskPool won't finish it unless we detach
-        #[cfg(not(all(feature = "tokio-runtime", not(target_arch = "wasm32"))))]
+        #[cfg(all(not(feature = "tokio-runtime"), not(feature = "tokio-runtime-multi-thread")))]
         task.detach();
     }
 

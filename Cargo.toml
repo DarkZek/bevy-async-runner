@@ -1,7 +1,7 @@
 [package]
 name = "bevy-async-runner"
 description = "Bevy Async Runner simplifies working with asynchronous code in the Bevy game engine. It provides a mechanism to schedule and execute async tasks and provide their result to any system."
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/DarkZek/bevy-async-runner"
@@ -10,6 +10,7 @@ keywords = ["bevy", "async"]
 
 [dependencies]
 bevy = { version = "0.16", default-features = false, features = ["bevy_log"] }
+maybe-sync = "0.1.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tokio = { version = "1.44.2", features = ["sync"]}
@@ -19,4 +20,12 @@ tokio = { version = "1.44.2", features = ["sync"] }
 
 [features]
 tokio-runtime = ["tokio/rt"]
-tokio-runtime-multi-thread = ["tokio/rt", "tokio/rt-multi-thread"]
+tokio-runtime-multi-thread = ["tokio/rt", "tokio/rt-multi-thread", "maybe-sync/sync"]
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["json"]}
+tokio = { version = "1.44.2", features = ["time"] }
+serde = { version = "1.0.219", features = ["derive"] }
+
+[[example]]
+name = "reqwest"
