@@ -1,6 +1,7 @@
 use std::future::Future;
 use bevy::prelude::{warn, trace, Commands, IntoSystem, Resource, SystemInput};
 use bevy::tasks::IoTaskPool;
+use maybe_sync::{MaybeSend, MaybeSync};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender, UnboundedReceiver};
 use tokio::sync::mpsc::error::TryRecvError;
 
@@ -56,7 +57,7 @@ impl AsyncRunner {
         I: SystemInput<Inner<'static>: Send + Sync> + Send + Sync + 'static
     >(
         &self,
-        task: impl Future<Output = I::Inner<'static>> + Sync + Send + 'static,
+        task: impl Future<Output = I::Inner<'static>> + MaybeSend + MaybeSync + 'static,
         system: S,
     ) {
         let task = self.pool.spawn((async |sender: UnboundedSender<ExecuteSystemFn>| {

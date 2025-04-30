@@ -36,15 +36,21 @@ fn print_name(In(name): In<String>) {
 Add the following to your `Cargo.toml`:
 
 ```toml
-[dependencies]
+# For wasm we can use default bevy io pool
+[target.'cfg(target_arch = "wasm32")'.dependencies]
 bevy-async-executor = "0.1"
+
+# For native we should use tokio so that reqwest & others work
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+bevy-async-runner = { version = "0.1", features = ["tokio-runtime-multi-thread"]}
 ```
 
 ## Features
 
-#### `tokio-runtime`
+#### `tokio-runtime-multi-thread`
 Use Tokio as the async runtime instead of Bevy's default IoTaskPool.
 This can be especially useful when integrating libraries that depend on Tokio (such as reqwest).
+Does not work on wasm.
 
 ## License
 

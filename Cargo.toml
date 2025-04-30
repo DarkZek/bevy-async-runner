@@ -10,6 +10,7 @@ keywords = ["bevy", "async"]
 
 [dependencies]
 bevy = { version = "0.16", default-features = false, features = ["bevy_log"] }
+maybe-sync = "0.1.1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tokio = { version = "1.44.2", features = ["sync"]}
@@ -19,7 +20,7 @@ tokio = { version = "1.44.2", features = ["sync"] }
 
 [features]
 tokio-runtime = ["tokio/rt"]
-tokio-runtime-multi-thread = ["tokio/rt", "tokio/rt-multi-thread"]
+tokio-runtime-multi-thread = ["tokio/rt", "tokio/rt-multi-thread", "maybe-sync/sync"]
 
 [dev-dependencies]
 reqwest = { version = "0.12", features = ["json"]}

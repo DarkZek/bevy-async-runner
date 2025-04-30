@@ -4,11 +4,11 @@ use bevy_async_runner::{AsyncRunner, AsyncRunnerPlugin};
 use serde::Deserialize;
 use tokio::time::sleep;
 
-#[cfg(not(any(feature = "tokio-runtime", feature = "tokio-runtime-multi-thread")))]
+#[cfg(all(not(feature = "tokio-runtime-multi-thread"), not(target_arch = "wasm32")))]
 compile_error!("Tokio feature required to use `reqwest`. Try `--features=\"tokio-runtime-multi-thread\"");
 
-#[cfg(all(feature = "tokio-runtime", not(target_arch = "wasm32")))]
-compile_error!("Tokio runtime will be blocked when running Bevy so will not work on non wasm targets");
+#[cfg(all(target_arch = "wasm32", any(feature = "tokio-runtime", feature = "tokio-runtime-multi-thread")))]
+compile_error!("Tokio single threaded runtime will be blocked when running Bevy, so this example does not work on non wasm targets");
 
 pub fn main() {
     App::new()
